@@ -40,8 +40,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.reactive.ClientHttpConnector;
 import org.springframework.http.client.reactive.ClientHttpRequest;
+import org.springframework.http.client.reactive.ClientHttpResponse;
 import org.springframework.http.codec.ClientCodecConfigurer;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.reactive.function.BodyExtractor;
 import org.springframework.web.reactive.function.BodyInserter;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.util.DefaultUriBuilderFactory;
@@ -472,14 +474,14 @@ public interface WebClient {
 		S attributes(Consumer<Map<String, Object>> attributesConsumer);
 
 		/**
-		 * Provide a function to populate the Reactor {@code Context}. In contrast
-		 * to {@link #attribute(String, Object) attributes} which apply only to
-		 * the current request, the Reactor {@code Context} transparently propagates
-		 * to the downstream processing chain which may include other nested or
-		 * successive calls over HTTP or via other reactive clients.
+		 * Provide a function to populate the Reactor {@code Context}.
 		 * @param contextModifier the function to modify the context with
+		 * @deprecated in 5.3.2 to be removed soon after; this method cannot
+		 * provide context to downstream (nested or subsequent) requests and is
+		 * of limited value.
 		 * @since 5.3.1
 		 */
+		@Deprecated
 		S context(Function<Context, Context> contextModifier);
 
 		/**
@@ -889,13 +891,22 @@ public interface WebClient {
 		<T> Mono<ResponseEntity<Flux<T>>> toEntityFlux(Class<T> elementType);
 
 		/**
-		 * Variant of {@link #toEntity(Class)} with a {@link ParameterizedTypeReference}.
+		 * Variant of {@link #toEntityFlux(Class)} with a {@link ParameterizedTypeReference}.
 		 * @param elementTypeReference the type of element to decode the target Flux to
 		 * @param <T> the body element type
 		 * @return the {@code ResponseEntity}
 		 * @since 5.3.1
 		 */
 		<T> Mono<ResponseEntity<Flux<T>>> toEntityFlux(ParameterizedTypeReference<T> elementTypeReference);
+
+		/**
+		 * Variant of {@link #toEntityFlux(Class)} with a {@link BodyExtractor}.
+		 * @param bodyExtractor the {@code BodyExtractor} that reads from the response
+		 * @param <T> the body element type
+		 * @return the {@code ResponseEntity}
+		 * @since 5.3.2
+		 */
+		<T> Mono<ResponseEntity<Flux<T>>> toEntityFlux(BodyExtractor<Flux<T>, ? super ClientHttpResponse> bodyExtractor);
 
 		/**
 		 * Return a {@code ResponseEntity} without a body. For an error response

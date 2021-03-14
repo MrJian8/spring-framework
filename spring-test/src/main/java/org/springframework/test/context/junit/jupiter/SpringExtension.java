@@ -52,6 +52,7 @@ import org.springframework.core.annotation.RepeatableContainers;
 import org.springframework.lang.Nullable;
 import org.springframework.test.context.TestConstructor;
 import org.springframework.test.context.TestContextManager;
+import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.support.PropertyProvider;
 import org.springframework.test.context.support.TestConstructorUtils;
 import org.springframework.util.Assert;
@@ -98,10 +99,10 @@ public class SpringExtension implements BeforeAllCallback, AfterAllCallback, Tes
 	private static final List<Class<? extends Annotation>> JUPITER_ANNOTATION_TYPES =
 			Arrays.asList(BeforeAll.class, AfterAll.class, BeforeEach.class, AfterEach.class, Testable.class);
 
-	private static final MethodFilter autowiredTestOrLifecycleMethodFilter = method ->
-			(ReflectionUtils.USER_DECLARED_METHODS.matches(method) &&
-				!Modifier.isPrivate(method.getModifiers()) &&
-				isAutowiredTestOrLifecycleMethod(method));
+	private static final MethodFilter autowiredTestOrLifecycleMethodFilter =
+			ReflectionUtils.USER_DECLARED_METHODS
+				.and(method -> !Modifier.isPrivate(method.getModifiers()))
+				.and(SpringExtension::isAutowiredTestOrLifecycleMethod);
 
 
 	/**
@@ -218,6 +219,7 @@ public class SpringExtension implements BeforeAllCallback, AfterAllCallback, Tes
 	 * invoked with a fallback {@link PropertyProvider} that delegates its lookup
 	 * to {@link ExtensionContext#getConfigurationParameter(String)}.</li>
 	 * <li>The parameter is of type {@link ApplicationContext} or a sub-type thereof.</li>
+	 * <li>The parameter is of type {@link ApplicationEvents} or a sub-type thereof.</li>
 	 * <li>{@link ParameterResolutionDelegate#isAutowirable} returns {@code true}.</li>
 	 * </ol>
 	 * <p><strong>WARNING</strong>: If a test class {@code Constructor} is annotated
@@ -238,7 +240,17 @@ public class SpringExtension implements BeforeAllCallback, AfterAllCallback, Tes
 				extensionContext.getConfigurationParameter(propertyName).orElse(null);
 		return (TestConstructorUtils.isAutowirableConstructor(executable, testClass, junitPropertyProvider) ||
 				ApplicationContext.class.isAssignableFrom(parameter.getType()) ||
+				supportsApplicationEvents(parameterContext) ||
 				ParameterResolutionDelegate.isAutowirable(parameter, parameterContext.getIndex()));
+	}
+
+	private boolean supportsApplicationEvents(ParameterContext parameterContext) {
+		if (ApplicationEvents.class.isAssignableFrom(parameterContext.getParameter().getType())) {
+			Assert.isTrue(parameterContext.getDeclaringExecutable() instanceof Method,
+				"ApplicationEvents can only be injected into test and lifecycle methods");
+			return true;
+		}
+		return false;
 	}
 
 	/**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -384,7 +384,7 @@ public abstract class ReflectionUtils {
 	 * @throws IllegalStateException if introspection fails
 	 */
 	public static Method[] getAllDeclaredMethods(Class<?> leafClass) {
-		final List<Method> methods = new ArrayList<>(32);
+		final List<Method> methods = new ArrayList<>(20);
 		doWithMethods(leafClass, methods::add);
 		return methods.toArray(EMPTY_METHOD_ARRAY);
 	}
@@ -410,7 +410,7 @@ public abstract class ReflectionUtils {
 	 * @since 5.2
 	 */
 	public static Method[] getUniqueDeclaredMethods(Class<?> leafClass, @Nullable MethodFilter mf) {
-		final List<Method> methods = new ArrayList<>(32);
+		final List<Method> methods = new ArrayList<>(20);
 		doWithMethods(leafClass, method -> {
 			boolean knownSignature = false;
 			Method methodBeingOverriddenWithCovariantReturnType = null;
@@ -625,6 +625,7 @@ public abstract class ReflectionUtils {
 	 * <p>Thrown exceptions are handled via a call to {@link #handleReflectionException(Exception)}.
 	 * @param field the field to set
 	 * @param target the target object on which to set the field
+	 * (or {@code null} for a static field)
 	 * @param value the value to set (may be {@code null})
 	 */
 	public static void setField(Field field, @Nullable Object target, @Nullable Object value) {
@@ -644,6 +645,7 @@ public abstract class ReflectionUtils {
 	 * <p>Thrown exceptions are handled via a call to {@link #handleReflectionException(Exception)}.
 	 * @param field the field to get
 	 * @param target the target object from which to get the field
+	 * (or {@code null} for a static field)
 	 * @return the field's current value
 	 */
 	@Nullable
@@ -824,6 +826,19 @@ public abstract class ReflectionUtils {
 		 * @param method the method to check
 		 */
 		boolean matches(Method method);
+
+		/**
+		 * Create a composite filter based on this filter <em>and</em> the provided filter.
+		 * <p>If this filter does not match, the next filter will not be applied.
+		 * @param next the next {@code MethodFilter}
+		 * @return a composite {@code MethodFilter}
+		 * @throws IllegalArgumentException if the MethodFilter argument is {@code null}
+		 * @since 5.3.2
+		 */
+		default MethodFilter and(MethodFilter next) {
+			Assert.notNull(next, "Next MethodFilter must not be null");
+			return method -> matches(method) && next.matches(method);
+		}
 	}
 
 
@@ -852,6 +867,19 @@ public abstract class ReflectionUtils {
 		 * @param field the field to check
 		 */
 		boolean matches(Field field);
+
+		/**
+		 * Create a composite filter based on this filter <em>and</em> the provided filter.
+		 * <p>If this filter does not match, the next filter will not be applied.
+		 * @param next the next {@code FieldFilter}
+		 * @return a composite {@code FieldFilter}
+		 * @throws IllegalArgumentException if the FieldFilter argument is {@code null}
+		 * @since 5.3.2
+		 */
+		default FieldFilter and(FieldFilter next) {
+			Assert.notNull(next, "Next FieldFilter must not be null");
+			return field -> matches(field) && next.matches(field);
+		}
 	}
 
 }

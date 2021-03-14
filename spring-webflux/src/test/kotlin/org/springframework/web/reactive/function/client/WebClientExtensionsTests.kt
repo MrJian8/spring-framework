@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2020 the original author or authors.
+ * Copyright 2002-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.reactivestreams.Publisher
 import org.springframework.core.ParameterizedTypeReference
+import org.springframework.http.ResponseEntity
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.concurrent.CompletableFuture
@@ -123,6 +124,44 @@ class WebClientExtensionsTests {
 		runBlocking {
 			assertThat(spec.awaitBody<String>()).isEqualTo("foo")
 		}
+	}
+
+	@Test
+	fun `awaitBody of type Unit`() {
+		val spec = mockk<WebClient.ResponseSpec>()
+		val entity = mockk<ResponseEntity<Void>>()
+		every { spec.toBodilessEntity() } returns Mono.just(entity)
+		runBlocking {
+			assertThat(spec.awaitBody<Unit>()).isEqualTo(Unit)
+		}
+	}
+
+	@Test
+	fun awaitBodilessEntity() {
+		val spec = mockk<WebClient.ResponseSpec>()
+		val entity = mockk<ResponseEntity<Void>>()
+		every { spec.toBodilessEntity() } returns Mono.just(entity)
+		runBlocking {
+			assertThat(spec.awaitBodilessEntity()).isEqualTo(entity)
+		}
+	}
+
+	@Test
+	fun `ResponseSpec#toEntity with reified type parameters`() {
+		responseSpec.toEntity<List<Foo>>()
+		verify { responseSpec.toEntity(object : ParameterizedTypeReference<List<Foo>>() {}) }
+	}
+
+	@Test
+	fun `ResponseSpec#toEntityList with reified type parameters`() {
+		responseSpec.toEntityList<List<Foo>>()
+		verify { responseSpec.toEntityList(object : ParameterizedTypeReference<List<Foo>>() {}) }
+	}
+
+	@Test
+	fun `ResponseSpec#toEntityFlux with reified type parameters`() {
+		responseSpec.toEntityFlux<List<Foo>>()
+		verify { responseSpec.toEntityFlux(object : ParameterizedTypeReference<List<Foo>>() {}) }
 	}
 
 	class Foo
